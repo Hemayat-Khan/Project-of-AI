@@ -2,197 +2,177 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from datetime import datetime, timedelta
 
 # ==============================
-# PAGE CONFIG
+# 🌟 PAGE CONFIG
 # ==============================
 st.set_page_config(
-    page_title="Restaurant Performance Dashboard",
-    page_icon="📊",
-    layout="wide"
+    page_title="Attractive Dataset Dashboard",
+    layout="wide",
+    page_icon="📊"
 )
 
 # ==============================
-# CLEAN PROFESSIONAL THEME
+# 🎨 CUSTOM CSS FOR FRONTEND
 # ==============================
 st.markdown("""
 <style>
+/* Background Gradient */
 body {
-    background-color: #f5f6fa;
+    background: linear-gradient(120deg, #f0f8ff, #ffe4e1);
 }
 
-h1, h2, h3 {
-    color: #2f3640;
-}
-
-.kpi-card {
+/* Card Styles */
+.card {
     background: white;
+    border-radius: 20px;
     padding: 20px;
-    border-radius: 12px;
-    box-shadow: 0px 4px 12px rgba(0,0,0,0.05);
+    margin: 10px 0;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
+
+/* Headers */
+h1, h2, h3 {
+    color: #2c3e50;
+    font-family: 'Segoe UI', sans-serif;
+}
+
+/* Metrics */
+.metric-card {
+    background: #ffffffcc;
+    border-radius: 15px;
+    padding: 20px;
+    margin: 10px;
     text-align: center;
+    box-shadow: 2px 4px 10px rgba(0,0,0,0.1);
 }
 
-.kpi-value {
-    font-size: 2.2rem;
+.metric-value {
+    font-size: 2.5rem;
     font-weight: bold;
-    color: #273c75;
+    color: #e74c3c;
 }
 
-.kpi-label {
-    font-size: 1rem;
-    color: #718093;
+.metric-label {
+    font-size: 1.2rem;
+    color: #34495e;
+}
+
+/* Sidebar */
+[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #74b9ff, #a29bfe);
+    color: #2d3436;
+    font-weight: bold;
 }
 </style>
 """, unsafe_allow_html=True)
 
 # ==============================
-# REALISTIC RESTAURANT DATA
+# 📁 DATA UPLOAD
 # ==============================
-@st.cache_data
-def load_data():
-    dates = pd.date_range(
-        start=datetime.today() - timedelta(days=30),
-        periods=30
+st.title("📊 Attractive Dataset Dashboard")
+uploaded_file = st.file_uploader("Upload your CSV dataset", type=["csv"])
+
+if uploaded_file:
+    df = pd.read_csv('cleaned_orders.csv')
+    st.success("✅ Dataset loaded successfully!")
+    
+    st.subheader("Dataset Preview")
+    st.dataframe(df.head(), height=200)
+    
+    # ==============================
+    # 🌟 Metrics
+    # ==============================
+    st.subheader("Quick Stats")
+    
+    numeric_cols = df.select_dtypes(include=["int64", "float64"]).columns.tolist()
+    
+    if numeric_cols:
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-label">Rows</div>
+                <div class="metric-value">{df.shape[0]}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with col2:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-label">Columns</div>
+                <div class="metric-value">{df.shape[1]}</div>
+            </div>
+            """, unsafe_allow_html=True)
+        with col3:
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-label">Numeric Columns</div>
+                <div class="metric-value">{len(numeric_cols)}</div>
+            </div>
+            """, unsafe_allow_html=True)
+    
+    # ==============================
+    # 📊 INTERACTIVE VISUALIZATION
+    # ==============================
+    st.subheader("Interactive Charts")
+    
+    chart_type = st.selectbox("Select chart type", ["Scatter", "Line", "Bar", "Histogram", "Pie"])
+    
+    if chart_type in ["Scatter", "Line", "Bar"]:
+        x_axis = st.selectbox("X-axis", df.columns)
+        y_axis = st.selectbox("Y-axis", df.columns)
+        color_col = st.selectbox("Color by (optional)", [None] + df.columns.tolist())
+        
+        if chart_type == "Scatter":
+            fig = px.scatter(df, x=x_axis, y=y_axis, color=color_col, title=f"Scatter: {y_axis} vs {x_axis}")
+        elif chart_type == "Line":
+            fig = px.line(df, x=x_axis, y=y_axis, color=color_col, title=f"Line: {y_axis} vs {x_axis}")
+        elif chart_type == "Bar":
+            fig = px.bar(df, x=x_axis, y=y_axis, color=color_col, title=f"Bar: {y_axis} vs {x_axis}")
+        
+        st.plotly_chart(fig, use_container_width=True)
+    
+    elif chart_type == "Histogram":
+        col = st.selectbox("Select column for histogram", numeric_cols)
+        fig = px.histogram(df, x=col, nbins=20, title=f"Histogram of {col}")
+        st.plotly_chart(fig, use_container_width=True)
+    
+    elif chart_type == "Pie":
+        cat_cols = df.select_dtypes(include=["object", "category"]).columns.tolist()
+        if cat_cols:
+            col = st.selectbox("Select categorical column for pie chart", cat_cols)
+            fig = px.pie(df, names=col, title=f"Pie Chart of {col}")
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.warning("No categorical columns found for pie chart.")
+    
+    # ==============================
+    # 🔍 DATA FILTER
+    # ==============================
+    st.subheader("Filter Data")
+    st.write("Filter your dataset interactively:")
+    
+    filter_cols = st.multiselect("Select columns to filter", df.columns.tolist(), default=df.columns.tolist()[:3])
+    
+    filtered_df = df.copy()
+    for col in filter_cols:
+        unique_vals = df[col].unique().tolist()
+        selected_vals = st.multiselect(f"Filter {col}", options=unique_vals, default=unique_vals)
+        filtered_df = filtered_df[filtered_df[col].isin(selected_vals)]
+    
+    st.dataframe(filtered_df, height=300)
+    
+    # ==============================
+    # 💾 DOWNLOAD FILTERED DATA
+    # ==============================
+    st.markdown("### Download Filtered Dataset")
+    csv = filtered_df.to_csv(index=False).encode()
+    st.download_button(
+        label="📥 Download CSV",
+        data=csv,
+        file_name="filtered_dataset.csv",
+        mime="text/csv"
     )
-
-    data = {
-        "Date": dates,
-        "Orders": [120 + i % 15 for i in range(30)],
-        "Revenue": [2500 + i * 45 for i in range(30)],
-        "Cost": [1500 + i * 30 for i in range(30)]
-    }
-
-    df = pd.DataFrame(data)
-    df["Profit"] = df["Revenue"] - df["Cost"]
-    df["AOV"] = df["Revenue"] / df["Orders"]
-
-    return df
-
-df = load_data()
-
-# ==============================
-# HEADER
-# ==============================
-st.title("📊 Restaurant Performance Dashboard")
-st.write("Operational and financial overview of restaurant performance")
-
-# ==============================
-# DATE FILTER
-# ==============================
-with st.sidebar:
-    st.header("Filters")
-    start_date = st.date_input("Start Date", df["Date"].min())
-    end_date = st.date_input("End Date", df["Date"].max())
-
-filtered_df = df[
-    (df["Date"] >= pd.to_datetime(start_date)) &
-    (df["Date"] <= pd.to_datetime(end_date))
-]
-
-# ==============================
-# KPI SECTION
-# ==============================
-col1, col2, col3, col4 = st.columns(4)
-
-with col1:
-    st.markdown(f"""
-    <div class="kpi-card">
-        <div class="kpi-label">Total Revenue</div>
-        <div class="kpi-value">${filtered_df['Revenue'].sum():,.0f}</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with col2:
-    st.markdown(f"""
-    <div class="kpi-card">
-        <div class="kpi-label">Total Cost</div>
-        <div class="kpi-value">${filtered_df['Cost'].sum():,.0f}</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with col3:
-    st.markdown(f"""
-    <div class="kpi-card">
-        <div class="kpi-label">Total Profit</div>
-        <div class="kpi-value">${filtered_df['Profit'].sum():,.0f}</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with col4:
-    st.markdown(f"""
-    <div class="kpi-card">
-        <div class="kpi-label">Avg Order Value</div>
-        <div class="kpi-value">${filtered_df['AOV'].mean():.2f}</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-st.markdown("---")
-
-# ==============================
-# REVENUE & PROFIT TREND
-# ==============================
-st.subheader("Revenue & Profit Trend")
-
-fig = go.Figure()
-fig.add_trace(go.Scatter(
-    x=filtered_df["Date"],
-    y=filtered_df["Revenue"],
-    name="Revenue",
-    line=dict(width=3)
-))
-fig.add_trace(go.Scatter(
-    x=filtered_df["Date"],
-    y=filtered_df["Profit"],
-    name="Profit",
-    line=dict(width=3)
-))
-
-fig.update_layout(
-    height=400,
-    xaxis_title="Date",
-    yaxis_title="Amount ($)",
-    hovermode="x unified"
-)
-
-st.plotly_chart(fig, use_container_width=True)
-
-# ==============================
-# ORDERS BAR CHART
-# ==============================
-st.subheader("Daily Orders")
-
-fig2 = px.bar(
-    filtered_df,
-    x="Date",
-    y="Orders",
-    title="Orders per Day"
-)
-
-fig2.update_layout(height=350)
-
-st.plotly_chart(fig2, use_container_width=True)
-
-# ==============================
-# DATA TABLE
-# ==============================
-st.subheader("Detailed Performance Table")
-
-st.dataframe(
-    filtered_df.style.format({
-        "Revenue": "${:,.0f}",
-        "Cost": "${:,.0f}",
-        "Profit": "${:,.0f}",
-        "AOV": "${:.2f}"
-    }),
-    use_container_width=True
-)
-
-# ==============================
-# FOOTER
-# ==============================
-st.markdown(
-    "<center style='color:gray;'>Restaurant Analytics Dashboard • Real-World Business View</center>",
-    unsafe_allow_html=True
-)
+    
+else:
+    st.info("👆 Please upload a CSV file to see the attractive dashboard.")
